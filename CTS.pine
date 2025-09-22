@@ -1,0 +1,242 @@
+//@version=6
+// Complete Trading Setup - Multi-indicator system for comprehensive market analysis
+// Features: EMAs, Bollinger Bands, BMSB, Liquidity Zones, Trading Signals
+// Author: Pine Script Indicator
+// Version: 1.0
+
+indicator("Complete Trading Setup", shorttitle="CTS", overlay=true)
+
+// === INPUT PARAMETERS ===
+
+// Bollinger Bands
+bb_length = input.int(20, "BB Length", minval=1)
+bb_mult = input.float(2.0, "BB Multiplier", minval=0.001, maxval=50)
+
+// EMAs
+ema7_length = input.int(7, "EMA 7 Length", minval=1)
+ema21_length = input.int(21, "EMA 21 Length", minval=1)
+ema50_length = input.int(50, "EMA 50 Length", minval=1)
+ema100_length = input.int(100, "EMA 100 Length", minval=1)
+ema200_length = input.int(200, "EMA 200 Length", minval=1)
+
+// Bull Market Support Band
+bmsb_sma_length = input.int(20, "BMSB SMA Length", minval=1)
+bmsb_ema_length = input.int(21, "BMSB EMA Length", minval=1)
+bmsb_timeframe = input.timeframe("W", "BMSB Timeframe")
+
+// Liquidity Zones
+liq_show_zones = input.bool(true, "Show Liquidity Zones")
+liq_zone_distance = input.float(8.0, "Zone Distance %", minval=6.0, maxval=25.0)
+liq_lookback = input.int(20, "Pivot Lookback", minval=5, maxval=50)
+
+// Colors
+color_ema7 = input.color(color.green, "EMA 7 Color")
+color_ema21 = input.color(color.yellow, "EMA 21 Color")
+color_ema50 = input.color(color.blue, "EMA 50 Color")
+color_ema100 = input.color(color.white, "EMA 100 Color")
+color_ema200 = input.color(color.purple, "EMA 200 Color")
+
+// === CALCULATIONS ===
+
+// EMAs
+ema7 = ta.ema(close, ema7_length)
+ema21 = ta.ema(close, ema21_length)
+ema50 = ta.ema(close, ema50_length)
+ema100 = ta.ema(close, ema100_length)
+ema200 = ta.ema(close, ema200_length)
+
+// Bollinger Bands
+bb_basis = ta.sma(close, bb_length)
+bb_dev = bb_mult * ta.stdev(close, bb_length)
+bb_upper = bb_basis + bb_dev
+bb_lower = bb_basis - bb_dev
+
+// Bull Market Support Band - Following working example pattern
+bmsb_sma_htf = request.security(syminfo.tickerid, bmsb_timeframe, ta.sma(close, bmsb_sma_length), barmerge.gaps_on, barmerge.lookahead_off)
+bmsb_ema_htf = request.security(syminfo.tickerid, bmsb_timeframe, ta.ema(close, bmsb_ema_length), barmerge.gaps_on, barmerge.lookahead_off)
+
+// Market Structure Signals
+golden_cross = ta.crossover(ema50, ema200)
+death_cross = ta.crossunder(ema50, ema200)
+
+// Trading Signals
+strong_buy = close > ema7 and ema7 > ema21 and ema21 > ema50 and close > bb_basis and
+             (close > bmsb_ema_htf or close > bmsb_sma_htf) and
+             ta.crossover(close, ema21) and volume > ta.sma(volume, 20) * 1.5
+
+strong_sell = close < ema7 and ema7 < ema21 and ema21 < ema50 and close < bb_basis and
+              ta.crossunder(close, ema21) and
+              (ta.crossunder(close, bb_upper) or close < bb_lower) and
+              volume > ta.sma(volume, 20) * 1.2
+
+
+// Liquidity Zones with automatic 6-25% constraint enforcement
+zone_step = close * liq_zone_distance / 100.0
+
+// Calculate initial zones
+upper_zone_high = close + zone_step * 2.0
+upper_zone_low = close + zone_step
+lower_zone_high = close - zone_step
+lower_zone_low = close - zone_step * 2.0
+
+// Pivot adjustment
+pivot_high = ta.pivothigh(high, 10, 10)
+pivot_low = ta.pivotlow(low, 10, 10)
+
+var float last_pivot_high = na
+var float last_pivot_low = na
+
+if not na(pivot_high)
+    last_pivot_high := pivot_high
+if not na(pivot_low)
+    last_pivot_low := pivot_low
+
+// Adjust to pivots if close enough
+adjusted_upper_high = not na(last_pivot_high) and math.abs(last_pivot_high - upper_zone_high) < zone_step ? last_pivot_high : upper_zone_high
+adjusted_lower_low = not na(last_pivot_low) and math.abs(last_pivot_low - lower_zone_low) < zone_step ? last_pivot_low : lower_zone_low
+
+// Calculate total zone range percentage
+total_zone_range = ((adjusted_upper_high - adjusted_lower_low) / adjusted_lower_low) * 100.0
+
+// Automatic adjustment to enforce 6-25% limits
+final_upper_high = adjusted_upper_high
+final_lower_low = adjusted_lower_low
+
+// If range exceeds 25%, compress proportionally
+if total_zone_range > 25.0
+    target_range = close * 0.25 // 25%
+    current_range = adjusted_upper_high - adjusted_lower_low
+    compression_factor = target_range / current_range
+    center_price = (adjusted_upper_high + adjusted_lower_low) / 2.0
+
+    final_upper_high := center_price + (adjusted_upper_high - center_price) * compression_factor
+    final_lower_low := center_price + (adjusted_lower_low - center_price) * compression_factor
+
+// If range is below 6%, expand proportionally
+if total_zone_range < 6.0
+    target_range = close * 0.06 // 6%
+    current_range = adjusted_upper_high - adjusted_lower_low
+    expansion_factor = target_range / current_range
+    center_price = (adjusted_upper_high + adjusted_lower_low) / 2.0
+
+    final_upper_high := center_price + (adjusted_upper_high - center_price) * expansion_factor
+    final_lower_low := center_price + (adjusted_lower_low - center_price) * expansion_factor
+
+// Recalculate middle lines based on final values
+final_zone_step = (final_upper_high - final_lower_low) / 4.0
+final_upper_zone_low = final_lower_low + final_zone_step * 3.0
+final_lower_zone_high = final_lower_low + final_zone_step
+
+// Calculate final range for display
+final_total_range = ((final_upper_high - final_lower_low) / final_lower_low) * 100.0
+
+
+
+// === PLOTTING ===
+
+// Bollinger Bands
+bb_upper_plot = plot(bb_upper, "BB Upper", color=color.blue, linewidth=1, style=plot.style_line)
+bb_lower_plot = plot(bb_lower, "BB Lower", color=color.blue, linewidth=1, style=plot.style_line)
+plot(bb_basis, "BB Basis", color=color.blue, linewidth=1, style=plot.style_line)
+fill(bb_upper_plot, bb_lower_plot, color=color.new(color.blue, 95), title="BB Background")
+
+// EMAs
+plot(ema7, "EMA 7", color=color_ema7, linewidth=3)
+plot(ema21, "EMA 21", color=color_ema21, linewidth=3)
+plot(ema50, "EMA 50", color=color_ema50, linewidth=3)
+plot(ema100, "EMA 100", color=color_ema100, linewidth=3)
+plot(ema200, "EMA 200", color=color_ema200, linewidth=3)
+
+
+// Bull Market Support Band
+bmsb_sma_plot = plot(bmsb_sma_htf, color=color.new(color.red, 0), title="20w SMA", linewidth=2)
+bmsb_ema_plot = plot(bmsb_ema_htf, color=color.new(color.green, 0), title="21w EMA", linewidth=2)
+fill(bmsb_sma_plot, bmsb_ema_plot, color=color.new(color.orange, 75), fillgaps=true)
+
+// Golden Cross and Death Cross signals
+plotshape(golden_cross, title="Golden Cross", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.normal, text="GC")
+plotshape(death_cross, title="Death Cross", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.normal, text="DC")
+
+// Strong Buy/Sell Signals
+plotshape(strong_buy, title="Strong Buy", location=location.belowbar, color=color.lime, style=shape.labelup, size=size.large, text="BUY")
+plotshape(strong_sell, title="Strong Sell", location=location.abovebar, color=color.red, style=shape.labeldown, size=size.large, text="SELL")
+
+
+// Liquidity Lines (4 lines for 3 zones) - Only current levels
+if liq_show_zones and barstate.islast
+    // Line 1: Upper zone boundary (top)
+    line.new(bar_index - 50, final_upper_high, bar_index + 20, final_upper_high,
+             color=color.new(color.red, 0), width=2, style=line.style_solid, extend=extend.right)
+
+    // Line 2: Upper zone boundary (bottom) / Current zone boundary (top)
+    line.new(bar_index - 50, final_upper_zone_low, bar_index + 20, final_upper_zone_low,
+             color=color.new(color.orange, 0), width=1, style=line.style_dashed, extend=extend.right)
+
+    // Line 3: Current zone boundary (bottom) / Lower zone boundary (top)
+    line.new(bar_index - 50, final_lower_zone_high, bar_index + 20, final_lower_zone_high,
+             color=color.new(color.orange, 0), width=1, style=line.style_dashed, extend=extend.right)
+
+    // Line 4: Lower zone boundary (bottom)
+    line.new(bar_index - 50, final_lower_low, bar_index + 20, final_lower_low,
+             color=color.new(color.green, 0), width=2, style=line.style_solid, extend=extend.right)
+
+// Add zone labels only on the last bar
+if liq_show_zones and barstate.islast
+    // Upper Zone Label
+    label.new(bar_index + 12, (final_upper_high + final_upper_zone_low) / 2,
+             text="UPPER LIQ",
+             style=label.style_label_left,
+             color=color.red,
+             textcolor=color.white,
+             size=size.small)
+
+    // Current Zone Label
+    label.new(bar_index + 12, (final_upper_zone_low + final_lower_zone_high) / 2,
+             text="CURRENT",
+             style=label.style_label_left,
+             color=color.orange,
+             textcolor=color.white,
+             size=size.small)
+
+    // Lower Zone Label
+    label.new(bar_index + 12, (final_lower_zone_high + final_lower_low) / 2,
+             text="LOWER LIQ",
+             style=label.style_label_left,
+             color=color.green,
+             textcolor=color.white,
+             size=size.small)
+
+    // Zone range info label
+    label.new(bar_index + 12, final_upper_high + (final_upper_high - final_lower_low) * 0.05,
+             text=str.tostring(final_total_range, "#.#") + "%",
+             style=label.style_label_left,
+             color=color.blue,
+             textcolor=color.white,
+             size=size.tiny)
+
+
+
+
+// === ALERTS ===
+alertcondition(golden_cross, title="Golden Cross Alert", message="Golden Cross detected: EMA50 crossed above EMA200")
+alertcondition(death_cross, title="Death Cross Alert", message="Death Cross detected: EMA50 crossed below EMA200")
+alertcondition(ta.crossover(close, bb_upper), title="BB Upper Break", message="Price broke above Bollinger Band upper limit")
+alertcondition(ta.crossunder(close, bb_lower), title="BB Lower Break", message="Price broke below Bollinger Band lower limit")
+alertcondition(strong_buy, title="Strong Buy Alert", message="STRONG BUY signal triggered - All conditions met")
+alertcondition(strong_sell, title="Strong Sell Alert", message="STRONG SELL signal triggered - All conditions met")
+
+// === TABLE WITH CURRENT VALUES ===
+if barstate.islast
+    var table info_table = table.new(position.top_right, 2, 6, bgcolor=color.white, border_width=1)
+    table.cell(info_table, 0, 0, "Indicator", text_color=color.black, bgcolor=color.gray)
+    table.cell(info_table, 1, 0, "Value", text_color=color.black, bgcolor=color.gray)
+    table.cell(info_table, 0, 1, "EMA 7", text_color=color.black)
+    table.cell(info_table, 1, 1, str.tostring(ema7, "#.##"), text_color=color.black)
+    table.cell(info_table, 0, 2, "EMA 21", text_color=color.black)
+    table.cell(info_table, 1, 2, str.tostring(ema21, "#.##"), text_color=color.black)
+    table.cell(info_table, 0, 3, "EMA 50", text_color=color.black)
+    table.cell(info_table, 1, 3, str.tostring(ema50, "#.##"), text_color=color.black)
+    table.cell(info_table, 0, 4, "EMA 200", text_color=color.black)
+    table.cell(info_table, 1, 4, str.tostring(ema200, "#.##"), text_color=color.black)
+    table.cell(info_table, 0, 5, "BB Upper", text_color=color.black)
+    table.cell(info_table, 1, 5, str.tostring(bb_upper, "#.##"), text_color=color.black)
