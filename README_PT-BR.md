@@ -40,7 +40,9 @@ O Complete Trading Setup é um sistema avançado multi-indicador projetado para 
 - **Strong Sell**: Confluência de múltiplas condições para entradas curtas de alta probabilidade
 
 ### 6. **Tabela de Dados em Tempo Real**
-- Valores atuais de todas as EMAs e limite superior das Bandas de Bollinger
+- Valores atuais de todas as 5 EMAs (7, 21, 50, 100, 200)
+- **Entradas codificadas por cores** correspondentes às cores das respectivas linhas EMA
+- **Otimizada para tema escuro** com fundo preto e texto branco
 - Posicionada no canto superior direito para fácil referência
 - Atualiza em tempo real com dados de mercado
 
@@ -167,10 +169,13 @@ O indicador inclui alertas automatizados para:
 
 ### Codificação de Cores
 - **Vermelho**: Resistência, sinais baixistas, liquidez superior
-- **Verde**: Suporte, sinais altistas, liquidez inferior
+- **Verde**: Suporte, sinais altistas, liquidez inferior, EMA 7
 - **Laranja**: Zonas neutras, área do preço atual
-- **Azul**: Bandas de Bollinger
-- **Personalizado**: Cores das EMAs (configurável)
+- **Azul**: Bandas de Bollinger, EMA 50
+- **Amarelo**: EMA 21
+- **Branco**: EMA 100
+- **Roxo**: EMA 200 (linha de tendência principal)
+- **Personalizado**: Todas as cores das EMAs são configuráveis nas configurações
 
 ## 📊 Notas de Performance
 

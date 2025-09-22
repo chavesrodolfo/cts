@@ -40,7 +40,9 @@ The Complete Trading Setup is an advanced multi-indicator system designed for co
 - **Strong Sell**: Multi-condition confluence for high-probability short entries
 
 ### 6. **Real-Time Data Table**
-- Current values of all EMAs and Bollinger Band upper limit
+- Current values of all 5 EMAs (7, 21, 50, 100, 200)
+- **Color-coded entries** matching their respective EMA line colors
+- **Dark theme optimized** with black background and white text
 - Positioned at top-right for easy reference
 - Updates in real-time with market data
 
@@ -167,10 +169,13 @@ The indicator includes automated alerts for:
 
 ### Color Coding
 - **Red**: Resistance, bearish signals, upper liquidity
-- **Green**: Support, bullish signals, lower liquidity
+- **Green**: Support, bullish signals, lower liquidity, EMA 7
 - **Orange**: Neutral zones, current price area
-- **Blue**: Bollinger Bands
-- **Custom**: EMA colors (configurable)
+- **Blue**: Bollinger Bands, EMA 50
+- **Yellow**: EMA 21
+- **White**: EMA 100
+- **Purple**: EMA 200 (major trend line)
+- **Custom**: All EMA colors are configurable in settings
 
 ## 📊 Performance Notes
 
