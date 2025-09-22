@@ -59,15 +59,9 @@ bmsb_ema_htf = request.security(syminfo.tickerid, bmsb_timeframe, ta.ema(close, 
 golden_cross = ta.crossover(ema50, ema200)
 death_cross = ta.crossunder(ema50, ema200)
 
-// Trading Signals
-strong_buy = close > ema7 and ema7 > ema21 and ema21 > ema50 and close > bb_basis and
-             (close > bmsb_ema_htf or close > bmsb_sma_htf) and
-             ta.crossover(close, ema21) and volume > ta.sma(volume, 20) * 1.5
-
-strong_sell = close < ema7 and ema7 < ema21 and ema21 < ema50 and close < bb_basis and
-              ta.crossunder(close, ema21) and
-              (ta.crossunder(close, bb_upper) or close < bb_lower) and
-              volume > ta.sma(volume, 20) * 1.2
+// Trading Signals - Strong Buy/Sell only
+strong_buy = ta.crossover(close, ema21) and close > ema7
+strong_sell = ta.crossunder(close, ema21) and close < ema7
 
 
 // Liquidity Zones with automatic 6-25% constraint enforcement
@@ -154,12 +148,12 @@ bmsb_ema_plot = plot(bmsb_ema_htf, color=color.new(color.green, 0), title="21w E
 fill(bmsb_sma_plot, bmsb_ema_plot, color=color.new(color.orange, 75), fillgaps=true)
 
 // Golden Cross and Death Cross signals
-plotshape(golden_cross, title="Golden Cross", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.normal, text="GC")
-plotshape(death_cross, title="Death Cross", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.normal, text="DC")
+plotshape(golden_cross, title="Golden Cross", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.normal, textcolor=color.white, text="GC")
+plotshape(death_cross, title="Death Cross", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.normal, textcolor=color.white, text="DC")
 
-// Strong Buy/Sell Signals
-plotshape(strong_buy, title="Strong Buy", location=location.belowbar, color=color.lime, style=shape.labelup, size=size.large, text="BUY")
-plotshape(strong_sell, title="Strong Sell", location=location.abovebar, color=color.red, style=shape.labeldown, size=size.large, text="SELL")
+// Buy/Sell Signals
+plotshape(strong_buy, title="Buy", location=location.belowbar, color=color.lime, style=shape.labelup, size=size.small, textcolor=color.white, text="")
+plotshape(strong_sell, title="Sell", location=location.abovebar, color=color.red, style=shape.labeldown, size=size.small, textcolor=color.white, text="")
 
 
 // Liquidity Lines (4 lines for 3 zones) - Only current levels
@@ -222,8 +216,8 @@ alertcondition(golden_cross, title="Golden Cross Alert", message="Golden Cross d
 alertcondition(death_cross, title="Death Cross Alert", message="Death Cross detected: EMA50 crossed below EMA200")
 alertcondition(ta.crossover(close, bb_upper), title="BB Upper Break", message="Price broke above Bollinger Band upper limit")
 alertcondition(ta.crossunder(close, bb_lower), title="BB Lower Break", message="Price broke below Bollinger Band lower limit")
-alertcondition(strong_buy, title="Strong Buy Alert", message="STRONG BUY signal triggered - All conditions met")
-alertcondition(strong_sell, title="Strong Sell Alert", message="STRONG SELL signal triggered - All conditions met")
+alertcondition(strong_buy, title="Strong Buy Alert", message="STRONG BUY signal triggered - Price crossed above EMA21 with bullish alignment")
+alertcondition(strong_sell, title="Strong Sell Alert", message="STRONG SELL signal triggered - Price crossed below EMA21 with bearish alignment")
 
 // === TABLE WITH CURRENT VALUES ===
 if barstate.islast
